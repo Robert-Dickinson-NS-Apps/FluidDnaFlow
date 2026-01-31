@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, RotateCcw, HelpCircle, Droplets, AlertTriangle } from "lucide-react";
+import { Link } from "wouter";
+import { Play, Pause, RotateCcw, Droplets } from "lucide-react";
 import SimulationCanvas from "@/components/simulation/SimulationCanvas";
 import ControlPanel from "@/components/simulation/ControlPanel";
 import EducationalPanel from "@/components/simulation/EducationalPanel";
@@ -95,13 +96,21 @@ export default function Simulation() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <nav className="flex items-center space-x-2">
+                <Link href="/">
+                  <Button variant="secondary" size="sm">Simulation</Button>
+                </Link>
+                <Link href="/onboarding">
+                  <Button variant="ghost" size="sm">About</Button>
+                </Link>
+                <Link href="/docs">
+                  <Button variant="ghost" size="sm">Documentation</Button>
+                </Link>
+              </nav>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium">Status:</span>
                 {getStatusBadge()}
               </div>
-              <Button variant="ghost" size="sm">
-                <HelpCircle className="w-5 h-5" />
-              </Button>
             </div>
           </div>
         </div>
