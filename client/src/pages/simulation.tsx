@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, RotateCcw, HelpCircle, Dna } from "lucide-react";
+import { Play, Pause, RotateCcw, HelpCircle, Droplets, AlertTriangle } from "lucide-react";
 import SimulationCanvas from "@/components/simulation/SimulationCanvas";
 import ControlPanel from "@/components/simulation/ControlPanel";
 import EducationalPanel from "@/components/simulation/EducationalPanel";
 import PerformanceMetrics from "@/components/simulation/PerformanceMetrics";
+import MethodologyPanel from "@/components/simulation/MethodologyPanel";
+import LimitationsDisclaimer from "@/components/simulation/LimitationsDisclaimer";
 
 export interface SimulationState {
   running: boolean;
@@ -42,9 +44,11 @@ export default function Simulation() {
   });
 
   const [metrics, setMetrics] = useState({
-    maxVelocity: 2.45,
-    pressureDrop: 0.12,
-    fps: 60,
+    maxVelocity: 0,
+    pressureDrop: 0,
+    dragCoefficient: 0,
+    computedReynolds: 0,
+    fps: 0,
   });
 
   const handleStart = () => {
@@ -84,10 +88,10 @@ export default function Simulation() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Dna className="text-primary text-2xl" />
+              <Droplets className="text-primary text-2xl" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">CFD Simulation</h1>
-                <p className="text-sm text-muted-foreground">2D Laminar Flow around DNA Molecule</p>
+                <h1 className="text-2xl font-bold text-foreground">Fluid Flow Visualization</h1>
+                <p className="text-sm text-muted-foreground">Educational Demonstration of 2D Laminar Flow</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -190,6 +194,12 @@ export default function Simulation() {
 
         {/* Performance Metrics */}
         <PerformanceMetrics metrics={metrics} reynolds={simulationState.reynolds} />
+
+        {/* Methodology and Limitations Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <MethodologyPanel />
+          <LimitationsDisclaimer />
+        </div>
       </div>
     </div>
   );

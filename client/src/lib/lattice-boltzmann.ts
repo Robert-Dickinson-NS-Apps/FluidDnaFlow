@@ -350,15 +350,124 @@ export class LatticeBotzmann {
   getPressureDrop(): number {
     let inletPressure = 0;
     let outletPressure = 0;
-    let count = 0;
+    let inletCount = 0;
+    let outletCount = 0;
     
-    for (let j = 0; j < this.ny; j++) {
-      inletPressure += this.rho[5][j] / 3.0;
-      outletPressure += this.rho[this.nx - 5][j] / 3.0;
-      count++;
+    // Sample pressure at inlet (left side, avoiding boundaries)
+    // In LBM, pressure p = rho * cs^2 = rho / 3
+    for (let j = 2; j < this.ny - 2; j++) {
+      if (!this.obstacles[10] || !this.obstacles[10][j]) {
+        inletPressure += this.rho[10][j] / 3.0;
+        inletCount++;
+      }
     }
     
-    return (inletPressure - outletPressure) / count;
+    // Sample pressure at outlet (right side, avoiding boundaries)
+    for (let j = 2; j < this.ny - 2; j++) {
+      if (!this.obstacles[this.nx - 10] || !this.obstacles[this.nx - 10][j]) {
+        outletPressure += this.rho[this.nx - 10][j] / 3.0;
+        outletCount++;
+      }
+    }
+    
+    if (inletCount === 0 || outletCount === 0) return 0;
+    
+    // Return pressure drop in lattice units (no additional scaling)
+    const avgInletPressure = inletPressure / inletCount;
+    const avgOutletPressure = outletPressure / outletCount;
+    
+    return avgInletPressure - avgOutletPressure;
+  }
+  
+  // Compute actual Reynolds number from flow field
+  getComputedReynolds(): number {
+    // Re = U * L / nu where L is characteristic length (obstacle diameter)
+    // Use maximum of x and y extent as the characteristic length
+    let minObsX = this.nx, maxObsX = 0;
+    let minObsY = this.ny, maxObsY = 0;
+    let hasObstacle = false;
+    
+    for (let i = 0; i < this.nx; i++) {
+      for (let j = 0; j < this.ny; j++) {
+        if (this.obstacles[i] && this.obstacles[i][j]) {
+          hasObstacle = true;
+          minObsX = Math.min(minObsX, i);
+          maxObsX = Math.max(maxObsX, i);
+          minObsY = Math.min(minObsY, j);
+          maxObsY = Math.max(maxObsY, j);
+        }
+      }
+    }
+    
+    if (!hasObstacle) return this.reynolds;
+    
+    // Use maximum span as characteristic diameter
+    const xSpan = maxObsX - minObsX + 1;
+    const ySpan = maxObsY - minObsY + 1;
+    const characteristicLength = Math.max(xSpan, ySpan);
+    
+    return (this.velocity * characteristicLength) / this.viscosity;
+  }
+  
+  // Get drag coefficient estimate
+  getDragCoefficient(): number {
+    // Estimate drag from pressure difference across obstacle
+    // Using pressure drag approximation: Cd ≈ deltaP / (0.5 * rho * U^2)
+    let upstreamPressure = 0;
+    let downstreamPressure = 0;
+    let upCount = 0;
+    let downCount = 0;
+    
+    // Find obstacle bounds
+    let obsMinX = this.nx, obsMaxX = 0;
+    let obsMinY = this.ny, obsMaxY = 0;
+    
+    for (let i = 0; i < this.nx; i++) {
+      for (let j = 0; j < this.ny; j++) {
+        if (this.obstacles[i] && this.obstacles[i][j]) {
+          obsMinX = Math.min(obsMinX, i);
+          obsMaxX = Math.max(obsMaxX, i);
+          obsMinY = Math.min(obsMinY, j);
+          obsMaxY = Math.max(obsMaxY, j);
+        }
+      }
+    }
+    
+    if (obsMinX >= obsMaxX) return 0;
+    
+    const obsCenterY = Math.floor((obsMinY + obsMaxY) / 2);
+    const sampleRange = Math.floor((obsMaxY - obsMinY) / 2) || 3;
+    
+    // Sample upstream pressure (before obstacle)
+    // In LBM, pressure p = rho / 3
+    const upX = Math.max(5, obsMinX - 5);
+    for (let j = obsCenterY - sampleRange; j <= obsCenterY + sampleRange; j++) {
+      if (j >= 0 && j < this.ny && !this.obstacles[upX][j]) {
+        upstreamPressure += this.rho[upX][j] / 3.0;
+        upCount++;
+      }
+    }
+    
+    // Sample downstream pressure (after obstacle)
+    const downX = Math.min(this.nx - 5, obsMaxX + 5);
+    for (let j = obsCenterY - sampleRange; j <= obsCenterY + sampleRange; j++) {
+      if (j >= 0 && j < this.ny && !this.obstacles[downX][j]) {
+        downstreamPressure += this.rho[downX][j] / 3.0;
+        downCount++;
+      }
+    }
+    
+    if (upCount === 0 || downCount === 0) return 0;
+    
+    // Pressure difference (now in proper LBM pressure units)
+    const deltaPressure = (upstreamPressure / upCount) - (downstreamPressure / downCount);
+    
+    // Dynamic pressure: 0.5 * rho * U^2 (using rho=1 in lattice units)
+    const dynamicPressure = 0.5 * 1.0 * this.velocity * this.velocity;
+    
+    if (dynamicPressure < 1e-10) return 0;
+    
+    return Math.abs(deltaPressure / dynamicPressure);
   }
   
   getGridWidth(): number {

@@ -5,7 +5,13 @@ import { DNAGeometry } from "@/lib/dna-geometry";
 
 interface SimulationCanvasProps {
   simulationState: SimulationState;
-  onMetricsUpdate: (metrics: { maxVelocity: number; pressureDrop: number; fps: number }) => void;
+  onMetricsUpdate: (metrics: { 
+    maxVelocity: number; 
+    pressureDrop: number; 
+    dragCoefficient: number;
+    computedReynolds: number;
+    fps: number 
+  }) => void;
 }
 
 export default function SimulationCanvas({ simulationState, onMetricsUpdate }: SimulationCanvasProps) {
@@ -139,12 +145,15 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
         reynolds: simulationState.reynolds,
         maxVelocity: lbmRef.current.getMaxVelocity(),
         pressureDrop: lbmRef.current.getPressureDrop(),
+        computedReynolds: lbmRef.current.getComputedReynolds(),
       });
 
       // Update metrics
       onMetricsUpdate({
         maxVelocity: lbmRef.current.getMaxVelocity(),
         pressureDrop: lbmRef.current.getPressureDrop(),
+        dragCoefficient: lbmRef.current.getDragCoefficient(),
+        computedReynolds: lbmRef.current.getComputedReynolds(),
         fps: Math.round(avgFps),
       });
 
@@ -277,15 +286,16 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
     }
   };
 
-  const drawDataOverlay = (ctx: CanvasRenderingContext2D, data: { reynolds: number; maxVelocity: number; pressureDrop: number }) => {
+  const drawDataOverlay = (ctx: CanvasRenderingContext2D, data: { reynolds: number; maxVelocity: number; pressureDrop: number; computedReynolds: number }) => {
     ctx.fillStyle = 'hsla(0, 0%, 0%, 0.8)';
-    ctx.fillRect(canvasRef.current!.width - 200, 10, 190, 80);
+    ctx.fillRect(canvasRef.current!.width - 200, 10, 190, 95);
 
     ctx.fillStyle = 'hsl(120, 100%, 60%)';
     ctx.font = '12px "Roboto Mono", monospace';
-    ctx.fillText(`Re: ${data.reynolds.toFixed(1)}`, canvasRef.current!.width - 190, 30);
-    ctx.fillText(`Max Velocity: ${data.maxVelocity.toFixed(2)} m/s`, canvasRef.current!.width - 190, 50);
-    ctx.fillText(`Pressure Drop: ${data.pressureDrop.toFixed(3)} Pa`, canvasRef.current!.width - 190, 70);
+    ctx.fillText(`Input Re: ${data.reynolds.toFixed(0)}`, canvasRef.current!.width - 190, 28);
+    ctx.fillText(`Computed Re: ${data.computedReynolds.toFixed(0)}`, canvasRef.current!.width - 190, 46);
+    ctx.fillText(`Max Vel: ${data.maxVelocity.toFixed(3)}`, canvasRef.current!.width - 190, 64);
+    ctx.fillText(`dP: ${(data.pressureDrop * 10000).toFixed(2)} x10^-4`, canvasRef.current!.width - 190, 82);
   };
 
   return (

@@ -1,8 +1,10 @@
-# Fluid Dynamics Simulation Application
+# Fluid Flow Visualization (Educational Demonstration)
 
 ## Overview
 
-This is a full-stack web application that simulates fluid flow around DNA molecules using the Lattice-Boltzmann method. The application features an interactive React frontend with real-time visualization and an Express.js backend designed for potential future API endpoints and database integration.
+This is an educational web application that demonstrates 2D fluid flow patterns around obstacles using the Lattice-Boltzmann Method (LBM). The application features an interactive React frontend with real-time visualization and an Express.js backend designed for potential future API endpoints.
+
+**Important:** This is a conceptual visualization for learning about fluid dynamics, not a validated research tool. See the Limitations section below.
 
 ## System Architecture
 
@@ -31,14 +33,20 @@ This is a full-stack web application that simulates fluid flow around DNA molecu
 
 ### Simulation Engine
 - **Lattice-Boltzmann Method**: D2Q9 implementation for 2D incompressible flow simulation
-- **DNA Geometry Generator**: Configurable DNA molecule shapes with varying complexity
-- **Real-time Visualization**: Canvas-based rendering with velocity fields, streamlines, and pressure visualization
+  - BGK single-relaxation-time collision operator
+  - Bounce-back boundary conditions for obstacles
+  - Equilibrium inlet, convective outlet boundaries
+- **Geometry Generator**: Configurable obstacle shapes with varying complexity
+- **Real-time Visualization**: Canvas-based rendering with velocity fields, streamlines, pressure, and vorticity visualization
+- **Computed Metrics**: Pressure drop (p = rho/3), drag coefficient, computed Reynolds number - all in lattice units
 
 ### User Interface
 - **Control Panel**: Interactive sliders and inputs for simulation parameters (Reynolds number, viscosity, velocity)
 - **Simulation Canvas**: Real-time fluid flow visualization with multiple rendering modes
-- **Educational Panel**: Contextual information about fluid dynamics phenomena
-- **Performance Metrics**: Real-time display of simulation statistics
+- **Educational Panel**: Contextual information about fluid dynamics phenomena (boundary layers, wake formation, vortex shedding)
+- **Methodology Panel**: Documentation of the numerical method (D2Q9, BGK, boundary conditions)
+- **Limitations Disclaimer**: Honest disclosure of the simulation's educational nature and approximations
+- **Performance Metrics**: Real-time display of computed flow metrics in lattice units
 
 ### Data Models
 - **User Schema**: Basic user authentication structure (id, username, password)
@@ -93,7 +101,20 @@ This is a full-stack web application that simulates fluid flow around DNA molecu
 - **Database Schema**: Drizzle migrations in `migrations/` directory
 - **Type Safety**: Shared schemas ensure consistency between frontend and backend
 
+## Simulation Limitations
+
+This simulation uses simplified assumptions:
+- **2D Flow**: Real fluid flow is three-dimensional
+- **Rigid Obstacle**: The obstacle shape does not deform or move
+- **Continuum Model**: Uses macro-scale physics, not molecular dynamics
+- **Simplified Geometry**: Obstacle represents a generic shape for educational purposes
+- **Normalized Units**: Values shown are in lattice units, not physical SI units
+
+Flow patterns shown are qualitatively representative of real fluid behavior. For quantitative analysis, use validated CFD software.
+
 ## Changelog
+- January 31, 2026. Added methodology documentation, limitations disclaimer, fixed pressure/drag calculations to use proper LBM units
+- January 31, 2026. Rebranded as Educational Visualization with honest framing
 - July 08, 2025. Initial setup
 
 ## User Preferences
