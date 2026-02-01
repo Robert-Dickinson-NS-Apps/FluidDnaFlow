@@ -176,34 +176,35 @@ export default function ControlPanel({ simulationState, onParameterChange, onApp
           </div>
         </div>
         
-        {/* DNA Geometry Controls */}
+        {/* Obstacle Shape */}
         <div className="mt-8">
-          <h3 className="font-semibold mb-4">DNA Geometry</h3>
+          <h3 className="font-semibold mb-4">Obstacle Shape</h3>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Molecule Size</Label>
-              <Select value={simulationState.dnaSize} onValueChange={(value) => onParameterChange('dnaSize', value)}>
+              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Shape Type</Label>
+              <Select value={simulationState.obstacleShape} onValueChange={(value) => onParameterChange('obstacleShape', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="small">Small (λ-DNA)</SelectItem>
-                  <SelectItem value="medium">Medium (Plasmid)</SelectItem>
-                  <SelectItem value="large">Large (Chromosome)</SelectItem>
+                  <SelectItem value="cylinder">Cylinder (Cd ~1.0-1.2)</SelectItem>
+                  <SelectItem value="square">Square (Cd ~2.0-2.2)</SelectItem>
+                  <SelectItem value="airfoil">Airfoil (Cd ~0.02-0.05)</SelectItem>
+                  <SelectItem value="dna">DNA Helix (Variable)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Shape Complexity</Label>
-              <Select value={simulationState.dnaComplexity} onValueChange={(value) => onParameterChange('dnaComplexity', value)}>
+              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Obstacle Size</Label>
+              <Select value={simulationState.dnaSize} onValueChange={(value) => onParameterChange('dnaSize', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="simple">Simple</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="complex">Complex</SelectItem>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
                 </SelectContent>
               </Select>
             </div>

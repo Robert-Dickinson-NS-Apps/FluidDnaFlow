@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
-import { Play, Pause, RotateCcw, Droplets, Share2, Copy, Check } from "lucide-react";
+import { Play, Pause, RotateCcw, Droplets, Share2, Check, Video, X, Crosshair } from "lucide-react";
 import SimulationCanvas from "@/components/simulation/SimulationCanvas";
 import ControlPanel, { presets } from "@/components/simulation/ControlPanel";
 import EducationalPanel from "@/components/simulation/EducationalPanel";
@@ -24,10 +24,19 @@ export interface SimulationState {
   timeStep: number;
   dnaSize: string;
   dnaComplexity: string;
+  obstacleShape: 'cylinder' | 'square' | 'airfoil' | 'dna';
   showVelocityField: boolean;
   showStreamlines: boolean;
   showPressureField: boolean;
   showVorticity: boolean;
+}
+
+export interface ProbeData {
+  x: number;
+  y: number;
+  velocity: number;
+  pressure: number;
+  vorticity: number;
 }
 
 const parseUrlParams = (): Partial<SimulationState> => {
@@ -86,6 +95,8 @@ export default function Simulation() {
   const [showPhysicalUnits, setShowPhysicalUnits] = useState(false);
   const [copied, setCopied] = useState(false);
   
+  const [probeData, setProbeData] = useState<ProbeData | null>(null);
+  
   const [simulationState, setSimulationState] = useState<SimulationState>(() => {
     const urlParams = parseUrlParams();
     return {
@@ -98,6 +109,7 @@ export default function Simulation() {
       timeStep: 0.01,
       dnaSize: urlParams.dnaSize ?? "medium",
       dnaComplexity: urlParams.dnaComplexity ?? "moderate",
+      obstacleShape: 'cylinder',
       showVelocityField: true,
       showStreamlines: true,
       showPressureField: false,
@@ -153,6 +165,10 @@ export default function Simulation() {
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleClearProbe = () => {
+    setProbeData(null);
   };
 
   const getStatusBadge = () => {
@@ -229,12 +245,28 @@ export default function Simulation() {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    {probeData && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button onClick={handleClearProbe} variant="outline" size="icon">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Clear probe marker</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                 </div>
 
                 <SimulationCanvas
                   simulationState={simulationState}
                   onMetricsUpdate={setMetrics}
+                  onProbe={setProbeData}
+                  probeData={probeData}
                 />
 
                 {/* Visualization Controls */}

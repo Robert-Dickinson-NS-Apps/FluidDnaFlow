@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { SimulationState } from "@/pages/simulation";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { SimulationState, ProbeData } from "@/pages/simulation";
 import { LatticeBotzmann } from "@/lib/lattice-boltzmann";
-import { DNAGeometry } from "@/lib/dna-geometry";
+import { ObstacleGenerator } from "@/lib/obstacle-shapes";
 
 interface SimulationCanvasProps {
   simulationState: SimulationState;
@@ -12,17 +12,54 @@ interface SimulationCanvasProps {
     computedReynolds: number;
     fps: number 
   }) => void;
+  onProbe?: (data: ProbeData | null) => void;
+  probeData?: ProbeData | null;
 }
 
-export default function SimulationCanvas({ simulationState, onMetricsUpdate }: SimulationCanvasProps) {
+export default function SimulationCanvas({ simulationState, onMetricsUpdate, onProbe, probeData }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const lbmRef = useRef<LatticeBotzmann>();
-  const dnaRef = useRef<DNAGeometry>();
+  const obstacleRef = useRef<ObstacleGenerator>();
   const lastTimeRef = useRef<number>(0);
   const fpsRef = useRef<number[]>([]);
 
   const [dimensions] = useState({ width: 800, height: 400 });
+
+  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !lbmRef.current || !onProbe) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    const gridWidth = lbmRef.current.getGridWidth();
+    const gridHeight = lbmRef.current.getGridHeight();
+    const scaleX = canvas.width / gridWidth;
+    const scaleY = canvas.height / gridHeight;
+
+    const gridX = Math.floor(clickX / scaleX);
+    const gridY = Math.floor(clickY / scaleY);
+
+    if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight) {
+      const velocityField = lbmRef.current.getVelocityField();
+      const pressureField = lbmRef.current.getPressureField();
+      const vorticityField = lbmRef.current.getVorticity();
+
+      const velocity = velocityField[gridX]?.[gridY] ?? 0;
+      const pressure = pressureField[gridX]?.[gridY] ?? 0;
+      const vorticity = vorticityField[gridX]?.[gridY] ?? 0;
+
+      onProbe({
+        x: clickX,
+        y: clickY,
+        velocity: Math.abs(velocity),
+        pressure,
+        vorticity,
+      });
+    }
+  }, [onProbe]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -42,21 +79,19 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
       reynolds: simulationState.reynolds,
     });
 
-    dnaRef.current = new DNAGeometry({
+    obstacleRef.current = new ObstacleGenerator({
+      shape: simulationState.obstacleShape,
       size: simulationState.dnaSize,
-      complexity: simulationState.dnaComplexity,
       orientation: simulationState.orientation,
       gridWidth,
       gridHeight,
     });
 
-    // Set up canvas
     canvas.width = dimensions.width;
     canvas.height = dimensions.height;
 
-    // Initialize LBM with DNA obstacles
     lbmRef.current.initialize();
-    const obstacles = dnaRef.current.getObstacles();
+    const obstacles = obstacleRef.current.getObstacles();
     lbmRef.current.setObstacles(obstacles);
 
     return () => {
@@ -64,7 +99,7 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [simulationState.gridResolution, simulationState.dnaSize, simulationState.dnaComplexity, dimensions]);
+  }, [simulationState.gridResolution, simulationState.dnaSize, simulationState.obstacleShape, dimensions]);
 
   useEffect(() => {
     if (!lbmRef.current) return;
@@ -78,17 +113,16 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
   }, [simulationState.viscosity, simulationState.velocity, simulationState.reynolds]);
 
   useEffect(() => {
-    if (!dnaRef.current || !lbmRef.current) return;
+    if (!obstacleRef.current || !lbmRef.current) return;
 
-    // Update DNA orientation
-    dnaRef.current.setOrientation(simulationState.orientation);
-    const obstacles = dnaRef.current.getObstacles();
+    obstacleRef.current.setOrientation(simulationState.orientation);
+    const obstacles = obstacleRef.current.getObstacles();
     lbmRef.current.setObstacles(obstacles);
   }, [simulationState.orientation]);
 
   useEffect(() => {
     const animate = (currentTime: number) => {
-      if (!canvasRef.current || !lbmRef.current || !dnaRef.current) return;
+      if (!canvasRef.current || !lbmRef.current || !obstacleRef.current) return;
 
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
@@ -111,10 +145,9 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
       ctx.fillStyle = 'hsl(220, 100%, 12%)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Get simulation data
       const velocityField = lbmRef.current.getVelocityField();
       const pressureField = lbmRef.current.getPressureField();
-      const obstacles = dnaRef.current.getObstacles();
+      const obstacles = obstacleRef.current.getObstacles();
 
       // Draw velocity field
       if (simulationState.showVelocityField) {
@@ -126,8 +159,7 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
         drawPressureField(ctx, pressureField, canvas.width, canvas.height);
       }
 
-      // Draw DNA molecule
-      drawDNA(ctx, obstacles, canvas.width, canvas.height);
+      drawObstacle(ctx, obstacles, canvas.width, canvas.height);
 
       // Draw streamlines
       if (simulationState.showStreamlines) {
@@ -140,13 +172,16 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
         drawVorticity(ctx, vorticity, canvas.width, canvas.height);
       }
 
-      // Draw real-time data overlay
       drawDataOverlay(ctx, {
         reynolds: simulationState.reynolds,
         maxVelocity: lbmRef.current.getMaxVelocity(),
         pressureDrop: lbmRef.current.getPressureDrop(),
         computedReynolds: lbmRef.current.getComputedReynolds(),
       });
+
+      if (probeData) {
+        drawProbeMarker(ctx, probeData);
+      }
 
       // Update metrics
       onMetricsUpdate({
@@ -215,7 +250,7 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
     }
   };
 
-  const drawDNA = (ctx: CanvasRenderingContext2D, obstacles: Array<{x: number, y: number, radius: number}>, width: number, height: number) => {
+  const drawObstacle = (ctx: CanvasRenderingContext2D, obstacles: Array<{x: number, y: number, radius: number}>, width: number, height: number) => {
     const gridWidth = lbmRef.current?.getGridWidth() || 200;
     const gridHeight = lbmRef.current?.getGridHeight() || 100;
     const scaleX = width / gridWidth;
@@ -227,6 +262,27 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
       ctx.arc(obstacle.x * scaleX, obstacle.y * scaleY, obstacle.radius * scaleX, 0, Math.PI * 2);
       ctx.fill();
     });
+  };
+
+  const drawProbeMarker = (ctx: CanvasRenderingContext2D, probe: ProbeData) => {
+    ctx.strokeStyle = 'hsl(60, 100%, 50%)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(probe.x, probe.y, 8, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'hsla(0, 0%, 0%, 0.85)';
+    const boxWidth = 140;
+    const boxHeight = 60;
+    const boxX = Math.min(probe.x + 15, canvasRef.current!.width - boxWidth - 10);
+    const boxY = Math.min(probe.y - 30, canvasRef.current!.height - boxHeight - 10);
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    ctx.fillStyle = 'hsl(60, 100%, 70%)';
+    ctx.font = '11px "Roboto Mono", monospace';
+    ctx.fillText(`Vel: ${probe.velocity.toFixed(4)}`, boxX + 8, boxY + 18);
+    ctx.fillText(`P: ${(probe.pressure * 10000).toFixed(2)} x10⁻⁴`, boxX + 8, boxY + 34);
+    ctx.fillText(`ω: ${probe.vorticity.toFixed(4)}`, boxX + 8, boxY + 50);
   };
 
   const drawStreamlines = (ctx: CanvasRenderingContext2D, velocityField: number[][], width: number, height: number) => {
@@ -302,10 +358,16 @@ export default function SimulationCanvas({ simulationState, onMetricsUpdate }: S
     <div className="relative">
       <canvas
         ref={canvasRef}
-        className="simulation-canvas w-full rounded-lg"
+        className="simulation-canvas w-full rounded-lg cursor-crosshair"
         width={dimensions.width}
         height={dimensions.height}
+        onClick={handleCanvasClick}
       />
+      {probeData && (
+        <div className="absolute bottom-2 left-2 bg-black/80 text-yellow-300 text-xs px-2 py-1 rounded font-mono">
+          Click anywhere to probe flow values
+        </div>
+      )}
     </div>
   );
 }
