@@ -2,25 +2,73 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SimulationState } from "@/pages/simulation";
+import { HelpCircle, Zap } from "lucide-react";
 
 interface ControlPanelProps {
   simulationState: SimulationState;
   onParameterChange: (parameter: keyof SimulationState, value: any) => void;
+  onApplyPreset: (preset: string) => void;
 }
 
-export default function ControlPanel({ simulationState, onParameterChange }: ControlPanelProps) {
+const presets = {
+  laminar: { name: "Laminar Flow", reynolds: 50, viscosity: 0.15, velocity: 1.0, description: "Smooth, layered flow at low Re" },
+  vortex: { name: "Vortex Street", reynolds: 200, viscosity: 0.08, velocity: 2.5, description: "Kármán vortex shedding pattern" },
+  turbulent: { name: "High Re Turbulence", reynolds: 800, viscosity: 0.02, velocity: 4.0, description: "Chaotic flow at high Re" },
+};
+
+const tooltips = {
+  reynolds: "Reynolds number (Re) = inertial forces / viscous forces. Low Re (<100) = laminar flow, High Re (>500) = turbulent tendencies.",
+  viscosity: "Kinematic viscosity (ν) measures fluid's resistance to flow. Higher viscosity = more 'thick' or 'syrupy' fluid.",
+  velocity: "Inlet velocity determines how fast fluid enters the domain. Higher velocity increases Reynolds number.",
+  orientation: "Rotates the obstacle geometry. Affects flow separation and wake patterns.",
+};
+
+export default function ControlPanel({ simulationState, onParameterChange, onApplyPreset }: ControlPanelProps) {
   return (
-    <Card>
-      <CardContent className="p-6">
-        <h2 className="text-xl font-semibold mb-6">Simulation Parameters</h2>
-        
-        {/* Flow Parameters */}
-        <div className="space-y-6">
-          <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Reynolds Number <span className="text-gray-500">(Re)</span>
+    <TooltipProvider>
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Simulation Parameters</h2>
+          
+          <div className="mb-6">
+            <Label className="text-sm font-medium text-muted-foreground mb-2 block flex items-center gap-1">
+              <Zap className="w-4 h-4" />
+              Quick Presets
             </Label>
+            <div className="grid grid-cols-1 gap-2">
+              {Object.entries(presets).map(([key, preset]) => (
+                <Button
+                  key={key}
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-left h-auto py-2"
+                  onClick={() => onApplyPreset(key)}
+                >
+                  <div>
+                    <div className="font-medium">{preset.name}</div>
+                    <div className="text-xs text-muted-foreground">{preset.description}</div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                Reynolds Number <span className="text-gray-500">(Re)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-4 h-4 cursor-help text-muted-foreground hover:text-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>{tooltips.reynolds}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
             <input
               type="range"
               className="parameter-slider w-full"
@@ -39,8 +87,16 @@ export default function ControlPanel({ simulationState, onParameterChange }: Con
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+            <Label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
               Viscosity <span className="text-gray-500">(ν)</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 cursor-help text-muted-foreground hover:text-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>{tooltips.viscosity}</p>
+                </TooltipContent>
+              </Tooltip>
             </Label>
             <input
               type="range"
@@ -61,8 +117,16 @@ export default function ControlPanel({ simulationState, onParameterChange }: Con
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Inlet Velocity <span className="text-gray-500">(m/s)</span>
+            <Label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              Inlet Velocity <span className="text-gray-500">(lattice units)</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 cursor-help text-muted-foreground hover:text-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>{tooltips.velocity}</p>
+                </TooltipContent>
+              </Tooltip>
             </Label>
             <input
               type="range"
@@ -83,8 +147,16 @@ export default function ControlPanel({ simulationState, onParameterChange }: Con
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-              DNA Orientation <span className="text-gray-500">(degrees)</span>
+            <Label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              Obstacle Orientation <span className="text-gray-500">(degrees)</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 cursor-help text-muted-foreground hover:text-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>{tooltips.orientation}</p>
+                </TooltipContent>
+              </Tooltip>
             </Label>
             <input
               type="range"
@@ -171,5 +243,8 @@ export default function ControlPanel({ simulationState, onParameterChange }: Con
         </div>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 }
+
+export { presets };

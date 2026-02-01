@@ -11,9 +11,16 @@ interface PerformanceMetricsProps {
     fps: number;
   };
   reynolds: number;
+  showPhysicalUnits?: boolean;
 }
 
-export default function PerformanceMetrics({ metrics, reynolds }: PerformanceMetricsProps) {
+const PHYSICAL_SCALE = {
+  length: 0.001,
+  velocity: 0.01,
+  pressure: 1000,
+};
+
+export default function PerformanceMetrics({ metrics, reynolds, showPhysicalUnits = false }: PerformanceMetricsProps) {
   const safeMetrics = {
     maxVelocity: metrics?.maxVelocity ?? 0,
     pressureDrop: metrics?.pressureDrop ?? 0,
@@ -22,19 +29,32 @@ export default function PerformanceMetrics({ metrics, reynolds }: PerformanceMet
     fps: metrics?.fps ?? 0,
   };
 
+  const displayVelocity = showPhysicalUnits 
+    ? (safeMetrics.maxVelocity * PHYSICAL_SCALE.velocity).toFixed(4)
+    : safeMetrics.maxVelocity.toFixed(3);
+  
+  const displayPressure = showPhysicalUnits
+    ? (safeMetrics.pressureDrop * PHYSICAL_SCALE.pressure).toFixed(2)
+    : (safeMetrics.pressureDrop * 10000).toFixed(2);
+
+  const velocityUnit = showPhysicalUnits ? "m/s" : "lu/ts";
+  const pressureUnit = showPhysicalUnits ? "Pa" : "x10⁻⁴ lu";
+
   return (
     <Card className="mt-6">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Computed Flow Metrics</h2>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Lattice Units</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+            {showPhysicalUnits ? "Physical Units (approx.)" : "Lattice Units"}
+          </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           <TooltipProvider>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary font-mono">{safeMetrics.maxVelocity.toFixed(3)}</div>
+              <div className="text-2xl font-bold text-primary font-mono">{displayVelocity}</div>
               <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                Max Velocity
+                Max Velocity ({velocityUnit})
                 <Tooltip>
                   <TooltipTrigger>
                     <HelpCircle className="w-3 h-3" />
@@ -47,9 +67,9 @@ export default function PerformanceMetrics({ metrics, reynolds }: PerformanceMet
             </div>
             
             <div className="text-center">
-              <div className="text-2xl font-bold text-secondary font-mono">{(safeMetrics.pressureDrop * 10000).toFixed(2)}</div>
+              <div className="text-2xl font-bold text-secondary font-mono">{displayPressure}</div>
               <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                Pressure Drop (x10^-4)
+                Pressure Drop ({pressureUnit})
                 <Tooltip>
                   <TooltipTrigger>
                     <HelpCircle className="w-3 h-3" />

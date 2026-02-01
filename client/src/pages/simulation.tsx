@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
-import { Play, Pause, RotateCcw, Droplets } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Play, Pause, RotateCcw, Droplets, Share2, Copy, Check } from "lucide-react";
 import SimulationCanvas from "@/components/simulation/SimulationCanvas";
-import ControlPanel from "@/components/simulation/ControlPanel";
+import ControlPanel, { presets } from "@/components/simulation/ControlPanel";
 import EducationalPanel from "@/components/simulation/EducationalPanel";
 import PerformanceMetrics from "@/components/simulation/PerformanceMetrics";
 import MethodologyPanel from "@/components/simulation/MethodologyPanel";
 import LimitationsDisclaimer from "@/components/simulation/LimitationsDisclaimer";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface SimulationState {
   running: boolean;
@@ -27,21 +30,79 @@ export interface SimulationState {
   showVorticity: boolean;
 }
 
+const parseUrlParams = (): Partial<SimulationState> => {
+  const params = new URLSearchParams(window.location.search);
+  const result: Partial<SimulationState> = {};
+  
+  const safeParseFloat = (value: string | null, min: number, max: number): number | undefined => {
+    if (!value) return undefined;
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || parsed < min || parsed > max) return undefined;
+    return parsed;
+  };
+  
+  const re = safeParseFloat(params.get('re'), 10, 1000);
+  if (re !== undefined) result.reynolds = re;
+  
+  const v = safeParseFloat(params.get('v'), 0.01, 0.2);
+  if (v !== undefined) result.viscosity = v;
+  
+  const u = safeParseFloat(params.get('u'), 0.1, 5.0);
+  if (u !== undefined) result.velocity = u;
+  
+  const o = safeParseFloat(params.get('o'), 0, 360);
+  if (o !== undefined) result.orientation = o;
+  
+  const validSizes = ['small', 'medium', 'large'];
+  const validComplexities = ['simple', 'moderate', 'complex'];
+  const validGrids = ['low', 'medium', 'high'];
+  
+  const size = params.get('size');
+  if (size && validSizes.includes(size)) result.dnaSize = size;
+  
+  const complexity = params.get('complexity');
+  if (complexity && validComplexities.includes(complexity)) result.dnaComplexity = complexity;
+  
+  const grid = params.get('grid');
+  if (grid && validGrids.includes(grid)) result.gridResolution = grid;
+  
+  return result;
+};
+
+const buildShareUrl = (state: SimulationState): string => {
+  const params = new URLSearchParams();
+  params.set('re', state.reynolds.toString());
+  params.set('v', state.viscosity.toString());
+  params.set('u', state.velocity.toString());
+  params.set('o', state.orientation.toString());
+  params.set('size', state.dnaSize);
+  params.set('complexity', state.dnaComplexity);
+  params.set('grid', state.gridResolution);
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+};
+
 export default function Simulation() {
-  const [simulationState, setSimulationState] = useState<SimulationState>({
-    running: false,
-    reynolds: 150,
-    viscosity: 0.1,
-    velocity: 2.0,
-    orientation: 0,
-    gridResolution: "medium",
-    timeStep: 0.01,
-    dnaSize: "medium",
-    dnaComplexity: "moderate",
-    showVelocityField: true,
-    showStreamlines: true,
-    showPressureField: false,
-    showVorticity: false,
+  const [, setLocation] = useLocation();
+  const [showPhysicalUnits, setShowPhysicalUnits] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const [simulationState, setSimulationState] = useState<SimulationState>(() => {
+    const urlParams = parseUrlParams();
+    return {
+      running: false,
+      reynolds: urlParams.reynolds ?? 150,
+      viscosity: urlParams.viscosity ?? 0.1,
+      velocity: urlParams.velocity ?? 2.0,
+      orientation: urlParams.orientation ?? 0,
+      gridResolution: urlParams.gridResolution ?? "medium",
+      timeStep: 0.01,
+      dnaSize: urlParams.dnaSize ?? "medium",
+      dnaComplexity: urlParams.dnaComplexity ?? "moderate",
+      showVelocityField: true,
+      showStreamlines: true,
+      showPressureField: false,
+      showVorticity: false,
+    };
   });
 
   const [metrics, setMetrics] = useState({
@@ -73,6 +134,25 @@ export default function Simulation() {
 
   const handleParameterChange = (parameter: keyof SimulationState, value: any) => {
     setSimulationState(prev => ({ ...prev, [parameter]: value }));
+  };
+
+  const handleApplyPreset = (presetKey: string) => {
+    const preset = presets[presetKey as keyof typeof presets];
+    if (preset) {
+      setSimulationState(prev => ({
+        ...prev,
+        reynolds: preset.reynolds,
+        viscosity: preset.viscosity,
+        velocity: preset.velocity,
+      }));
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    const url = buildShareUrl(simulationState);
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const getStatusBadge = () => {
@@ -137,6 +217,18 @@ export default function Simulation() {
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Reset
                     </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button onClick={handleCopyShareLink} variant="outline" size="icon">
+                            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{copied ? "Link copied!" : "Copy shareable link"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
 
@@ -147,7 +239,30 @@ export default function Simulation() {
 
                 {/* Visualization Controls */}
                 <div className="mt-6 bg-muted rounded-lg p-4">
-                  <h3 className="font-semibold mb-3">Visualization Options</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold">Visualization Options</h3>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="unit-toggle" className="text-sm text-muted-foreground">
+                        {showPhysicalUnits ? "Physical Units" : "Lattice Units"}
+                      </Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <Switch
+                                id="unit-toggle"
+                                checked={showPhysicalUnits}
+                                onCheckedChange={setShowPhysicalUnits}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>Toggle between lattice units (simulation native) and approximate physical units (with assumed scaling)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <label className="flex items-center space-x-2">
                       <input
@@ -196,13 +311,14 @@ export default function Simulation() {
             <ControlPanel
               simulationState={simulationState}
               onParameterChange={handleParameterChange}
+              onApplyPreset={handleApplyPreset}
             />
             <EducationalPanel />
           </div>
         </div>
 
         {/* Performance Metrics */}
-        <PerformanceMetrics metrics={metrics} reynolds={simulationState.reynolds} />
+        <PerformanceMetrics metrics={metrics} reynolds={simulationState.reynolds} showPhysicalUnits={showPhysicalUnits} />
 
         {/* Methodology and Limitations Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
