@@ -1,0 +1,213 @@
+Ideas to Extend or Improve This App
+
+Here are ten directions this could go, ranging from incremental improvements to ambitious pivots:
+
+
+
+Tier 1: Quick Enhancements (Days to Weeks)
+
+1. Add More Obstacle Shapes
+
+
+
+
+
+Airfoils (NACA profiles)
+
+
+
+Square/rectangular bluff bodies
+
+
+
+Multiple cylinders in tandem or side-by-side
+
+
+
+Custom shape drawing tool
+
+Why: Different shapes produce dramatically different flow patterns. Comparing cylinder vs. airfoil teaches drag reduction concepts.
+
+
+
+2. Parameter Presets Tied to Real-World Examples
+
+
+
+
+
+"Flow around a bridge pier" (Re ~10⁵)
+
+
+
+"Blood flow in an artery" (Re ~1000-4000)
+
+
+
+"Air around a car side mirror" (Re ~10⁴)
+
+
+
+"Submarine at cruising speed"
+
+Why: Connects abstract parameters to tangible scenarios. Increases engagement.
+
+
+
+3. Export and Sharing
+
+
+
+
+
+Download simulation as GIF/video
+
+
+
+Save parameter sets as shareable URLs
+
+
+
+Export velocity/pressure fields as CSV for further analysis
+
+Why: Enables use in presentations, reports, and classroom assignments.
+
+
+
+Tier 2: Moderate Enhancements (Weeks to Months)
+
+4. Add Particle Tracing Mode
+
+
+
+
+
+Release virtual particles that follow streamlines
+
+
+
+Visualize residence time, mixing, dispersion
+
+
+
+Color particles by velocity or time in domain
+
+Why: Particle tracking is intuitive and visually compelling. Helps explain Lagrangian vs. Eulerian perspectives.
+
+
+
+5. Interactive Boundary Conditions
+
+
+
+
+
+Let users draw walls, add inlets/outlets
+
+
+
+Create venturi constrictions, sudden expansions
+
+
+
+Model flow around custom obstacles
+
+Why: Increases exploratory potential. Users can test their own hypotheses.
+
+
+
+6. Side-by-Side Comparison Mode
+
+
+
+
+
+Run two simulations simultaneously with different parameters
+
+
+
+Sync playback to compare vortex shedding frequency, wake width, drag
+
+Why: Direct comparison accelerates learning. "What happens if I double the Reynolds number?" becomes visually immediate.
+
+
+
+7. Educational Overlay Mode
+
+
+
+
+
+Toggle annotations explaining what's happening physically
+
+
+
+Highlight boundary layer separation, stagnation point, recirculation zones
+
+
+
+Link to textbook concepts (Bernoulli, Navier-Stokes, Reynolds transport theorem)
+
+Why: Bridges the gap between visualization and formal education. Makes it a genuine teaching tool.
+
+
+
+Tier 3: Ambitious Extensions (Months)
+
+8. 3D Visualization Option
+
+
+
+
+
+Extend to 3D lattice Boltzmann (more computationally intensive)
+
+
+
+Use WebGL for rendering
+
+
+
+Show 3D streamlines, isosurfaces of vorticity
+
+Why: Real flow is 3D. Even simplified 3D visualization adds significant educational value. Challenging but possible with modern WebGL/WebGPU.
+
+
+
+9. Multi-Physics: Heat Transfer
+
+
+
+
+
+Add temperature field
+
+
+
+Simulate convective heat transfer from heated obstacles
+
+
+
+Visualize thermal boundary layers
+
+Why: Heat transfer is tightly coupled with fluid dynamics. HVAC, electronics cooling, and many engineering applications need both.
+
+
+
+10. AI-Assisted Exploration
+
+
+
+
+
+Natural language interface: "Show me turbulent flow around a cylinder"
+
+
+
+AI explains what's happening: "The alternating vortices you see are called the von Kármán vortex street…"
+
+
+
+Suggests experiments: "Try increasing Reynolds number to 200 to see stronger shedding"
+
+Why: This is the MCP Server / Natural Language Query idea applied to CFD education. Connects to our broader Incubation themes.
