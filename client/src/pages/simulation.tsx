@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
-import { Play, Pause, RotateCcw, Droplets, Share2, Check, Video, X, Crosshair } from "lucide-react";
+import { Play, Pause, RotateCcw, Droplets, Share2, Check, Video, X, Crosshair, Columns, Download, Loader2 } from "lucide-react";
 import SimulationCanvas from "@/components/simulation/SimulationCanvas";
+import ComparisonCanvas from "@/components/simulation/ComparisonCanvas";
 import ControlPanel, { presets } from "@/components/simulation/ControlPanel";
 import EducationalPanel from "@/components/simulation/EducationalPanel";
 import PerformanceMetrics from "@/components/simulation/PerformanceMetrics";
@@ -13,6 +14,8 @@ import LimitationsDisclaimer from "@/components/simulation/LimitationsDisclaimer
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { GifRecorder, downloadBlob } from "@/lib/gif-recorder";
+import { Slider } from "@/components/ui/slider";
 
 export interface SimulationState {
   running: boolean;
@@ -97,6 +100,26 @@ export default function Simulation() {
   
   const [probeData, setProbeData] = useState<ProbeData | null>(null);
   
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [reynoldsA, setReynoldsA] = useState(50);
+  const [reynoldsB, setReynoldsB] = useState(300);
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const gifRecorderRef = useRef<GifRecorder | null>(null);
+  const recordingIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      gifRecorderRef.current = null;
+    };
+  }, []);
+  
   const [simulationState, setSimulationState] = useState<SimulationState>(() => {
     const urlParams = parseUrlParams();
     return {
@@ -169,6 +192,65 @@ export default function Simulation() {
 
   const handleClearProbe = () => {
     setProbeData(null);
+  };
+
+  const handleStartRecording = async () => {
+    const canvas = document.querySelector('.simulation-canvas') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    gifRecorderRef.current = new GifRecorder({ maxFrames: 60, frameDelay: 100 });
+    await gifRecorderRef.current.start(canvas.width, canvas.height);
+    setIsRecording(true);
+    setRecordingProgress(0);
+
+    if (!simulationState.running) {
+      setSimulationState(prev => ({ ...prev, running: true }));
+    }
+
+    recordingIntervalRef.current = window.setInterval(() => {
+      const recorder = gifRecorderRef.current;
+      if (!recorder || !recorder.isRecording()) {
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+        }
+        return;
+      }
+
+      const canvas = document.querySelector('.simulation-canvas') as HTMLCanvasElement;
+      if (canvas) {
+        const added = recorder.addFrame(canvas);
+        setRecordingProgress(recorder.getProgress() * 100);
+        
+        if (!added || recorder.getFrameCount() >= recorder.getMaxFrames()) {
+          handleStopRecording();
+        }
+      }
+    }, 100);
+  };
+
+  const handleStopRecording = async () => {
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+
+    const recorder = gifRecorderRef.current;
+    if (!recorder) return;
+
+    setIsRecording(false);
+    setIsProcessing(true);
+
+    try {
+      const blob = await recorder.stop();
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+      downloadBlob(blob, `fluid-simulation-${timestamp}.gif`);
+    } catch (error) {
+      console.error('Failed to generate GIF:', error);
+    } finally {
+      setIsProcessing(false);
+      setRecordingProgress(0);
+      gifRecorderRef.current = null;
+    }
   };
 
   const getStatusBadge = () => {
@@ -259,15 +341,108 @@ export default function Simulation() {
                         </Tooltip>
                       </TooltipProvider>
                     )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            onClick={() => setComparisonMode(!comparisonMode)} 
+                            variant={comparisonMode ? "default" : "outline"} 
+                            size="icon"
+                          >
+                            <Columns className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{comparisonMode ? "Exit comparison mode" : "Compare Reynolds numbers"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            onClick={isRecording ? handleStopRecording : handleStartRecording}
+                            variant={isRecording ? "destructive" : "outline"}
+                            size="icon"
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isRecording ? (
+                              <X className="w-4 h-4" />
+                            ) : (
+                              <Video className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{isProcessing ? "Processing GIF..." : isRecording ? `Recording ${Math.round(recordingProgress)}%` : "Record GIF"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
 
-                <SimulationCanvas
-                  simulationState={simulationState}
-                  onMetricsUpdate={setMetrics}
-                  onProbe={setProbeData}
-                  probeData={probeData}
-                />
+                {isRecording && (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-red-500 font-medium flex items-center">
+                        <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse" />
+                        Recording...
+                      </span>
+                      <span className="text-sm text-muted-foreground">{Math.round(recordingProgress)}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-red-500 transition-all duration-100" 
+                        style={{ width: `${recordingProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {comparisonMode ? (
+                  <>
+                    <div className="mb-4 p-4 bg-muted rounded-lg">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium">Left: Re = {reynoldsA}</Label>
+                          <Slider
+                            value={[reynoldsA]}
+                            onValueChange={([v]) => setReynoldsA(v)}
+                            min={10}
+                            max={500}
+                            step={10}
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">Right: Re = {reynoldsB}</Label>
+                          <Slider
+                            value={[reynoldsB]}
+                            onValueChange={([v]) => setReynoldsB(v)}
+                            min={10}
+                            max={500}
+                            step={10}
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <ComparisonCanvas
+                      simulationState={simulationState}
+                      reynoldsA={reynoldsA}
+                      reynoldsB={reynoldsB}
+                    />
+                  </>
+                ) : (
+                  <SimulationCanvas
+                    simulationState={simulationState}
+                    onMetricsUpdate={setMetrics}
+                    onProbe={setProbeData}
+                    probeData={probeData}
+                  />
+                )}
 
                 {/* Visualization Controls */}
                 <div className="mt-6 bg-muted rounded-lg p-4">
